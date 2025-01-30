@@ -2,3 +2,8 @@
 !private/
 !public/
 !.gitignore
+
+!storage/
+!storage/app/
+!storage/app/users/
+!storage/app/books/
