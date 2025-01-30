@@ -58,7 +58,7 @@ class CartService {
             
             return response()->json([
                 'status' => true,
-                'message' => 'Prestamo realizado con éxito.',  
+                'message' => 'Prestamo realizado  con  éxito.',  
                 'data' => $newRequest['date_returned']                                
             ], 200);
             
