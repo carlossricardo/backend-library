@@ -10,6 +10,10 @@ use App\Exceptions\NotFoundException;
 use App\Exceptions\InternalServerErrorException;
 use Carbon\Carbon;
 
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\Exception;
+
+
 use Illuminate\Support\Facades\DB;
 
 class BookService {
@@ -189,12 +193,10 @@ class BookService {
             
             $newBook = Book::create([
                 'title' => $request['title'],
-                'description' => $request['description'],
-                // 'image' => $request['image'],
+                'description' => $request['description'],                
                 'image' => $image,
                 'autor' => $request['autor'],
-                'status' => $request['status'],
-                // 'emission' => Carbon::parse($request['emission'])->toDateString(),
+                'status' => $request['status'],                
                 'emission' =>  Carbon::parse($request['emission'])->timezone(config('app.timezone')),
                 'units' => $request['units'],
             ]);
@@ -223,6 +225,104 @@ class BookService {
         }   catch (Exception $e) {            
             throw new InternalServerErrorException('Error no controlado: ' . $e->getMessage());
         }
+    }
+
+
+    public function uploadFileBook( Request $request ){
+
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+
+        try {
+
+            
+            $file = $request->file('file');
+            $spreadsheet = IOFactory::load($file);
+
+
+             
+            $sheet = $spreadsheet->getActiveSheet();
+            $data = $sheet->toArray();
+
+
+                
+            array_shift($data);
+
+            DB::beginTransaction();
+
+            foreach ($data as $row) {                
+                if (empty($row[0]) || empty($row[1]) ||  empty($row[3]) || empty($row[4]) || empty($row[5]) || empty($row[7])) {
+                    continue;  
+                }
+
+                
+                $defaultImage = '53336135-f0fe-4fd2-9fb8-7730a5900a45_20241219_215014_default.jpg';
+                
+                
+                $image = !empty($row[2]) ? $row[2] : $defaultImage;
+
+
+                
+                $emissionDate = !empty($row[6]) 
+                    ? Carbon::parse($row[6])->timezone(config('app.timezone')) 
+                    : Carbon::now()->timezone(config('app.timezone'));
+
+
+                
+                $status = filter_var($row[4], FILTER_VALIDATE_BOOLEAN);
+
+                
+                $book = Book::create([
+                    'title' => $row[0],      
+                    'description' => $row[1], 
+                    'image' => $image,       
+                    'autor' => $row[3],       
+                    'status' => $status,     
+                    'emission' => $emissionDate,
+                    'units' => (int)$row[7], 
+                ]);
+
+                
+                $categoryIds = explode(',', $row[5]);  
+                $categories = Category::whereIn('code', $categoryIds)->get();  
+
+                
+                $missingCategories = array_diff($categoryIds, $categories->pluck('code')->toArray());
+                if (!empty($missingCategories)) {
+                    throw new \Exception("Las siguientes categorías no existen: " . implode(', ', $missingCategories));
+                }
+                
+                $book->categories()->attach($categories->pluck('id')->toArray());
+            }
+
+            DB::commit();
+
+
+ 
+
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Registros agregados con éxito. Por favor recargue la página.',                
+            ], 201);
+            
+
+
+        }   catch (QueryException $e) {                         
+            if ($e->getCode() === '2002' || strpos($e->getMessage(), 'No connection') !== false) {
+                throw new InternalServerErrorException('Error de conexión en la base de datos: ' . $e->getMessage());
+            }            
+            throw new InternalServerErrorException('Error al guardar en la base de datos: ' . $e->getMessage());
+    
+        }   catch (\PDOException $th) {            
+            throw new InternalServerErrorException('Error de conexión en la base de datos: ' . $th->getMessage());
+            
+        }   catch (Exception $e) {            
+            throw new InternalServerErrorException('Error no controlado: ' . $e->getMessage());
+        }
+
     }
 
 

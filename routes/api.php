@@ -59,6 +59,8 @@ Route::prefix('administration')->middleware('jwt-middleware')->group(function ()
     //Books
     Route::post('/book', [BookController::class, 'create'])
         ->middleware('profile-middleware:ADMIN');
+    Route::post('/book/uploadFile', [BookController::class, 'uploadFileBook'])
+        ->middleware('profile-middleware:ADMIN');
     Route::patch('/book', [BookController::class, 'patch'])
         ->middleware('profile-middleware:ADMIN');
     Route::get('/book', [BookController::class, 'findAll'])

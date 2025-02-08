@@ -19,6 +19,10 @@ class BookController extends Controller {
         $newRequest = collect($request)->all();        
         return $this->bookService->create( $newRequest );
     }
+
+    public function uploadFileBook( Request $request ){                       
+        return $this->bookService->uploadFileBook( $request );
+    }
     
     public function patch( Request $request ){
         $newRequest = collect($request)->all();  
